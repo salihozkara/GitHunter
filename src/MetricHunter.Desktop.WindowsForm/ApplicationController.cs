@@ -7,7 +7,14 @@ namespace MetricHunter.Desktop;
 
 public class ApplicationController : IApplicationController, ISingletonDependency
 {
+    public ApplicationController(IServiceProvider serviceProvider, IViewMain viewMain)
+    {
+        ServiceProvider = serviceProvider;
+        ViewMain = viewMain;
+    }
+
     public IViewMain ViewMain { get; }
+
     public void ErrorMessage(string message)
     {
         MessageBox.Show(message);
@@ -16,17 +23,6 @@ public class ApplicationController : IApplicationController, ISingletonDependenc
     public void SuccessMessage(string message)
     {
         throw new NotImplementedException();
-    }
-
-    public ApplicationController(IServiceProvider serviceProvider, IViewMain viewMain)
-    {
-        ServiceProvider = serviceProvider;
-        ViewMain = viewMain;
-    }
-
-    public void ShowMessage(string message)
-    {
-        ViewMain.ShowMessage(message);
     }
 
     public IServiceProvider ServiceProvider { get; }
@@ -42,5 +38,10 @@ public class ApplicationController : IApplicationController, ISingletonDependenc
         using var viewGithubLogin = new ViewGithubLogin();
         var presenter = new ViewGithubLoginPresenter(this, viewGithubLogin);
         presenter.Run();
+    }
+
+    public void ShowMessage(string message)
+    {
+        ViewMain.ShowMessage(message);
     }
 }

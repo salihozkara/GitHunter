@@ -1,18 +1,12 @@
 using MetricHunter.Application.Csv;
 using MetricHunter.Application.Git;
 using MetricHunter.Application.Metrics;
-using MetricHunter.Application.Resources;
+using MetricHunter.Application.Repositories;
 using MetricHunter.Desktop.Core;
 using MetricHunter.Desktop.Models;
 using MetricHunter.Desktop.Views;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Newtonsoft.Json;
 using Octokit;
-using System.Text;
-using MetricHunter.Application.Repositories;
-using Volo.Abp;
-using FileMode = System.IO.FileMode;
 
 namespace MetricHunter.Desktop.Presenters;
 
@@ -23,20 +17,8 @@ public class ViewMainPresenter : IViewMainPresenter
     private readonly IGitManager _gitManager;
     private readonly IGitProvider _gitProvider;
     private readonly IMetricCalculatorManager _metricCalculatorManager;
+    private readonly IRepositoryAppService _repositoryAppService;
     private IEnumerable<Repository> _repositories;
-    private IRepositoryAppService _repositoryAppService;
-
-    public IEnumerable<Repository> Repositories
-    {
-        get
-        {
-            return View.SelectedRepositories.Any()
-                ? _repositories.Where(x => View.SelectedRepositories.Contains(x.Id)).ToList()
-                : _repositories;
-        }
-        
-        set => _repositories = value;
-    }
 
     public ViewMainPresenter(IViewMain view, IApplicationController controller)
     {
@@ -51,6 +33,18 @@ public class ViewMainPresenter : IViewMainPresenter
         _metricCalculatorManager = _controller.ServiceProvider.GetRequiredService<IMetricCalculatorManager>();
         _csvHelper = _controller.ServiceProvider.GetRequiredService<ICsvHelper>();
         _repositoryAppService = _controller.ServiceProvider.GetRequiredService<IRepositoryAppService>();
+    }
+
+    public IEnumerable<Repository> Repositories
+    {
+        get
+        {
+            return View.SelectedRepositories.Any()
+                ? _repositories.Where(x => View.SelectedRepositories.Contains(x.Id)).ToList()
+                : _repositories;
+        }
+
+        set => _repositories = value;
     }
 
     public IViewMain View { get; }
@@ -81,7 +75,7 @@ public class ViewMainPresenter : IViewMainPresenter
             Topic = View.Topics
         };
 
-        var gitResult = await _gitManager.GetRepositories(gitInput);
+        var gitResult = await _gitManager.GetRepositoriesAsync(gitInput);
 
         _repositories = gitResult.Repositories;
 
@@ -92,8 +86,9 @@ public class ViewMainPresenter : IViewMainPresenter
             Description = x.Description,
             Stars = x.StargazersCount,
             Url = x.HtmlUrl,
-            License = x.License?.Name ?? "Lisans Yok",
-            Owner = x.Owner.Login
+            License = x.License?.Name ?? "No License",
+            Owner = x.Owner.Login,
+            SizeString = ToSizeString(x.Size)
         }).ToList();
 
         View.ShowRepositories(repositoryModelList);
@@ -101,10 +96,7 @@ public class ViewMainPresenter : IViewMainPresenter
 
     public async Task<string> CalculateMetrics()
     {
-        if (!Repositories.Any())
-        {
-            _controller.ErrorMessage("Repository bulunamadı");
-        }
+        CheckSelectRepositories();
 
         var metrics = new List<Dictionary<string, string>>();
         foreach (var item in Repositories)
@@ -112,6 +104,8 @@ public class ViewMainPresenter : IViewMainPresenter
             var language = GitConsts.LanguagesMap[item.Language];
             var manager = _metricCalculatorManager.FindMetricCalculator(language);
             var metric = await manager.CalculateMetricsAsync(item);
+            if (metric.IsEmpty())
+                continue;
             var dictList = metric.ToDictionaryListByTopics();
             metrics.AddRange(dictList);
         }
@@ -121,12 +115,9 @@ public class ViewMainPresenter : IViewMainPresenter
 
     public async Task DownloadRepositories()
     {
-        if (!Repositories.Any())
-        {
-            _controller.ErrorMessage("Repository bulunamadı.");
+        if (CheckSelectRepositories())
             return;
-        }
-        
+
         foreach (var item in Repositories) await _gitProvider.CloneRepository(item, View.DownloadRepositoryPath);
     }
 
@@ -134,7 +125,7 @@ public class ViewMainPresenter : IViewMainPresenter
     {
         if (View.JsonLoadPath.IsNullOrEmpty())
         {
-            _controller.ErrorMessage("Dosya bulunamadı");
+            _controller.ErrorMessage("No file selected");
             return;
         }
 
@@ -152,7 +143,8 @@ public class ViewMainPresenter : IViewMainPresenter
             Stars = x.StargazersCount,
             Url = x.HtmlUrl,
             License = x.License?.Name ?? "No Licence",
-            Owner = x.Owner.Login
+            Owner = x.Owner.Login,
+            SizeString = ToSizeString(x.Size)
         }).ToList();
 
         View.ShowRepositories(repositoryModelList);
@@ -171,15 +163,11 @@ public class ViewMainPresenter : IViewMainPresenter
 
     public async Task<string> HuntRepositories()
     {
-        if (!Repositories.Any())
-        {
-            _controller.ErrorMessage("Repository bulunamadı.");
-            return null;
-        }
+        if (CheckSelectRepositories())
+            return string.Empty;
 
         var metrics = new List<Dictionary<string, string>>();
         foreach (var item in Repositories)
-        {
             if (await _gitProvider.CloneRepository(item, View.DownloadRepositoryPath))
             {
                 var language = GitConsts.LanguagesMap[item.Language];
@@ -189,7 +177,28 @@ public class ViewMainPresenter : IViewMainPresenter
                 metrics.AddRange(dictList);
                 await _gitProvider.DeleteLocalRepository(item);
             }
-        }
+
         return _csvHelper.MetricsToCsv(metrics);
+    }
+
+    private bool CheckSelectRepositories()
+    {
+        if (!Repositories.Any())
+        {
+            _controller.ErrorMessage("No repositories selected");
+            return false;
+        }
+
+        return true;
+    }
+
+    private static string ToSizeString(long size) // size in kilobytes
+    {
+        return size switch
+        {
+            < 1024 => $"{size} KB",
+            < 1024 * 1024 => $"{Math.Round(size / 1024.0, 2)} MB",
+            _ => $"{Math.Round(size / 1024.0 / 1024.0, 2)} GB"
+        };
     }
 }

@@ -7,7 +7,6 @@ namespace MetricHunter.Desktop.Views;
 
 public interface IViewMain : IView<IViewMainPresenter>
 {
-    void ShowMessage(string message);
     string GithubToken { get; }
     IEnumerable<Language>? LanguageSelectList { set; }
 
@@ -24,10 +23,11 @@ public interface IViewMain : IView<IViewMainPresenter>
     string Topics { get; }
 
     string JsonLoadPath { get; set; }
-    
+
     string JsonSavePath { get; set; }
-    
+
     string DownloadRepositoryPath { get; set; }
+    void ShowMessage(string message);
 
     void ShowRepositories(IEnumerable<RepositoryModel> repositories);
 }

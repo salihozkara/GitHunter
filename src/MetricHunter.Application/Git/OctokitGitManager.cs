@@ -66,7 +66,7 @@ public class OctokitGitManager : IGitManager, ITransientDependency
     /// </summary>
     /// <param name="input"></param>
     /// <returns></returns>
-    public async Task<GitOutput> GetRepositories(GitInput input)
+    public async Task<GitOutput> GetRepositoriesAsync(GitInput input)
     {
         List<SearchRepositoriesRequest> failedRequests = new();
         List<Repository> repositories = new();
@@ -101,12 +101,30 @@ public class OctokitGitManager : IGitManager, ITransientDependency
         return new GitOutput(repositories.Take(input.Count).ToList(), failedRequests);
     }
 
+    public async Task<bool> IsRepositoryPublicAsync(Repository repository)
+    {
+        var defaultDate = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        if (repository.CreatedAt < defaultDate || repository.UpdatedAt < defaultDate)
+            return false;
+        try
+        {
+            var client = new HttpClient();
+            var response = await client.GetAsync(repository.HtmlUrl);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Failed to check if repository is public");
+            return false;
+        }
+    }
+
     /// <summary>
     ///     Reruns failed requests
     /// </summary>
     /// <param name="failedRequests"></param>
     /// <returns></returns>
-    public async Task<GitOutput> RetryFailedRequest(List<SearchRepositoriesRequest> failedRequests)
+    public async Task<GitOutput> RetryFailedRequestAsync(List<SearchRepositoriesRequest> failedRequests)
     {
         _logger.LogWarning("Retrying failed requests");
         var requests = failedRequests.ToList();

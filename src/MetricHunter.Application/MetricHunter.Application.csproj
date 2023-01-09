@@ -8,13 +8,13 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\MetricHunter.Application.Shared\MetricHunter.Application.Shared.csproj" />
-        <ProjectReference Include="..\MetricHunter.Core\MetricHunter.Core.csproj" />
+        <ProjectReference Include="..\MetricHunter.Application.Shared\MetricHunter.Application.Shared.csproj"/>
+        <ProjectReference Include="..\MetricHunter.Core\MetricHunter.Core.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="CsvHelper" Version="30.0.1" />
-        <PackageReference Include="Octokit" Version="4.0.3" />
+        <PackageReference Include="CsvHelper" Version="30.0.1"/>
+        <PackageReference Include="Octokit" Version="4.0.3"/>
     </ItemGroup>
 
 </Project>

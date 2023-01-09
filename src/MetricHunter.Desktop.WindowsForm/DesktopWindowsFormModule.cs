@@ -45,7 +45,7 @@ public class DesktopWindowsFormModule : MetricHunterModule
             .GetRequiredService<IApplicationController>();
 
         app.StartApplication();
-            
+
         base.OnApplicationInitialization(context);
     }
 }

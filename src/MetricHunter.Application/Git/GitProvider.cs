@@ -2,7 +2,6 @@
 using MetricHunter.Core.Helpers;
 using MetricHunter.Core.Processes;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using Octokit;
 using Volo.Abp.DependencyInjection;
 
@@ -28,14 +27,21 @@ public class GitProvider : IGitProvider, ISingletonDependency
             if (token.IsCancellationRequested) return false;
 
             _logger.LogInformation($"Cloning {repository.FullName}...");
-            
-            var path = PathHelper.BuildAndCreateFullPath(clonePath, repository.Language + " Repositories", repository.Owner.Login);
-            
+
+            var path = PathHelper.BuildAndCreateFullPath(clonePath, repository.Language + " Repositories",
+                repository.Owner.Login);
+
             var repositoryPath = Path.Combine(path, repository.Name);
             if (Directory.Exists(repositoryPath))
             {
-                var r = await _processManager.RunAsync("git", $"pull {repository.CloneUrl} --allow-unrelated-histories",
-                    path);
+                if (!Directory.Exists(Path.Combine(repositoryPath, ".git")))
+                    await DeleteLocalRepository(repositoryPath, token);
+                _logger.LogInformation($"Repository {repository.FullName} already exists.");
+                _logger.LogInformation($"Updating {repository.FullName}...");
+
+                var r = await _processManager.RunAsync(new ProcessStartInfo("git",
+                    $"pull {repository.CloneUrl} --allow-unrelated-histories",
+                    repositoryPath));
                 if (r.ExitCode != 0)
                 {
                     _logger.LogWarning(
@@ -49,23 +55,41 @@ public class GitProvider : IGitProvider, ISingletonDependency
                 }
             }
 
-            var result =
-                await _processManager.RunAsync("git", $"clone -c core.longpaths=true {repository.CloneUrl}", path);
-            if (result.ExitCode == 0)
-                _logger.LogInformation($"Cloned {repository.FullName} successfully.");
-            else
-                _logger.LogError($"Failed to clone {repository.FullName}.");
-
-            if (result.ExitCode == 0)
+            try
             {
-                OnCloneRepositorySuccess(new CloneRepositorySuccessEventArgs(repository));
-                var infoContent = JsonConvert.SerializeObject(repository);
-                await File.WriteAllTextAsync(Path.Combine(repositoryPath, GitConsts.RepositoryInfoFileExtension), infoContent, token);
-            }
-            else
-                OnCloneRepositoryError(new CloneRepositoryErrorEventArgs(repository, null));
+                var result =
+                    await _processManager.RunAsync(new ProcessStartInfo("git",
+                        $"clone -c core.longpaths=true {repository.CloneUrl}", path));
+                if (result.ExitCode == 0)
+                    _logger.LogInformation($"Cloned {repository.FullName} successfully.");
+                else
+                    _logger.LogError($"Failed to clone {repository.FullName}, exit code: {result.ExitCode}");
 
-            return result.ExitCode == 0;
+                if (result.ExitCode == 128)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(15), token);
+                    result =
+                        await _processManager.RunAsync(new ProcessStartInfo("git",
+                            $"clone -c core.longpaths=true {repository.CloneUrl}", path));
+                    if (result.ExitCode == 0)
+                        _logger.LogInformation($"Cloned {repository.FullName} successfully.");
+                    else
+                        _logger.LogError($"Failed to clone {repository.FullName}, exit code: {result.ExitCode}");
+                }
+
+                if (result.ExitCode == 0)
+                    OnCloneRepositorySuccess(new CloneRepositorySuccessEventArgs(repository));
+                else
+                    OnCloneRepositoryError(new CloneRepositoryErrorEventArgs(repository, null));
+
+                return result.ExitCode == 0;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, $"Failed to clone {repository.FullName}");
+                OnCloneRepositoryError(new CloneRepositoryErrorEventArgs(repository, e));
+                return false;
+            }
         }
         catch (Exception e)
         {
@@ -73,7 +97,7 @@ public class GitProvider : IGitProvider, ISingletonDependency
             return false;
         }
     }
-    
+
     public event EventHandler<CloneRepositoryErrorEventArgs>? CloneRepositoryError;
     public event EventHandler<CloneRepositorySuccessEventArgs>? CloneRepositorySuccess;
 

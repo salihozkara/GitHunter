@@ -1,4 +1,7 @@
-﻿using System.Xml;
+﻿using System.Reflection;
+using System.Text.RegularExpressions;
+using System.Xml;
+using MetricHunter.Application.Git;
 using MetricHunter.Application.Resources;
 using MetricHunter.Application.Results;
 using MetricHunter.Core.DependencyProcesses;
@@ -39,6 +42,12 @@ public class SourceMonitorMetricCalculator : IMetricCalculator
         var reportsPath =
             PathHelper.BuildFullPath(repository.Language, ReportsPath, repository.FullName + ".xml");
 
+        if (!File.Exists(reportsPath))
+        {
+            _logger.LogError("SourceMonitor reports file not found");
+            return new NullResult();
+        }
+
         var xmlDocument = new XmlDocument();
         xmlDocument.Load(reportsPath);
 
@@ -47,6 +56,28 @@ public class SourceMonitorMetricCalculator : IMetricCalculator
         FileNameChangeAndMove(repository, reportsPath);
 
         return new SourceMonitorResult(repository, GetMetrics(xmlDocument));
+    }
+
+    public Task<IResult?[]> CalculateMetricsByLocalResultsAsync(List<Repository> repositories,
+        CancellationToken token = default)
+    {
+        var tasks = repositories.Select(repository => Task.Run(() =>
+        {
+            var fileName = $"id_{repository.Id}_{repository.Name}.xml";
+            var filePath = Path.Combine(Resource.SourceMonitor.XmlReportsFolder, fileName);
+            if (!File.Exists(filePath))
+            {
+                _logger.LogError("SourceMonitor reports file not found");
+                return null;
+            }
+
+            var xmlDocument = new XmlDocument();
+            xmlDocument.Load(filePath);
+
+            return new SourceMonitorResult(repository, GetMetrics(xmlDocument)) as IResult;
+        }, token));
+
+        return Task.WhenAll(tasks);
     }
 
     private List<IMetric> GetMetrics(XmlNode xmlNode)
@@ -129,8 +160,9 @@ public class SourceMonitorMetricCalculator : IMetricCalculator
     {
         _logger.LogInformation("Calculating statistics for {RepositoryName}", repository.FullName);
         var xmlPath = await CreateSourceMonitorXml(repository);
-
-        var result = await _processManager.RunAsync(Resource.SourceMonitor.SourceMonitorExe.Value, $"/C \"{xmlPath}\"");
+        var result =
+            await _processManager.RunAsync(new ProcessStartInfo(Resource.SourceMonitor.SourceMonitorExe.Path,
+                $"/C \"{xmlPath}\""));
         _logger.LogDebug("SourceMonitor log: {SourceMonitorLog}", result.Output);
         _logger.LogError("SourceMonitor error log: {SourceMonitorErrorLog}", result.Error);
         if (result.ExitCode == 0)
@@ -150,12 +182,9 @@ public class SourceMonitorMetricCalculator : IMetricCalculator
 
         var xmlPath = Path.Combine(xmlDirectory, $"{repository.Name}.xml");
 
-        if (File.Exists(xmlPath))
-        {
-            _logger.LogInformation("SourceMonitor xml file already exists for {RepositoryName}. Skipping...",
-                repository.FullName);
-            return xmlPath;
-        }
+        if (File.Exists(xmlPath)) File.Delete(xmlPath);
+
+        await ContentErrorHandleRepository(projectDirectory, repository.Language);
 
         var xml = Resource.SourceMonitor.TemplateXml.Value
             .Replace(ProjectNameReplacement, repository.Name)
@@ -165,5 +194,59 @@ public class SourceMonitorMetricCalculator : IMetricCalculator
             .Replace(ReportsPathReplacement, reportsPath);
         await File.WriteAllTextAsync(xmlPath, xml);
         return xmlPath;
+    }
+
+    private async Task ContentErrorHandleRepository(string path, string lang)
+    {
+        var language = GitConsts.LanguagesMap[lang];
+
+        var handlerMethods = GetType().GetMethods().Where(m =>
+        {
+            var attribute = m.GetCustomAttribute<LanguageAttribute>();
+            return attribute != null && attribute.Languages.Contains(language);
+        });
+
+        foreach (var handlerMethod in handlerMethods)
+            try
+            {
+                if (typeof(Task).IsAssignableFrom(handlerMethod.ReturnType))
+                    await (handlerMethod.Invoke(this, new object[] { path }) as Task)!;
+                else
+                    handlerMethod.Invoke(this, new object[] { path });
+            }
+            catch
+            {
+                // ignored
+            }
+    }
+
+    [Language(Language.CSharp)]
+    private async Task SwitchExpressionHandle(string path)
+    {
+        var files = Directory.GetFiles(path, "*.cs", SearchOption.AllDirectories);
+
+        foreach (var filePath in files)
+            try
+            {
+                var regex = new Regex(@"\bswitch\s*\{[^}]+\}");
+                var text = await File.ReadAllTextAsync(filePath);
+                var matches = regex.Matches(text);
+                foreach (Match match in matches)
+
+                {
+                    var matchLineStart = text.LastIndexOf("\r\n", match.Index, StringComparison.Ordinal);
+                    var matchLineEnd = text.IndexOf("\r\n", match.Index, StringComparison.Ordinal);
+                    var matchLine = text.Substring(matchLineStart, matchLineEnd - matchLineStart);
+
+                    var newValue = "/*" + matchLine + "*/";
+                    text = text.Replace(matchLine, newValue);
+                }
+
+                await File.WriteAllTextAsync(filePath, text);
+            }
+            catch
+            {
+                // ignored
+            }
     }
 }

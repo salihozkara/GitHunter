@@ -2,9 +2,9 @@
 
 public static class PathHelper
 {
-    public static string BuildPath(params string?[] paths)
+    private static string BuildPath(params string?[] paths)
     {
-        var newPaths = paths.Where(p=>p!=null).Select(p=>p!).ToArray();
+        var newPaths = paths.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p!).ToArray();
         var path = Path.Combine(newPaths);
         return path;
     }

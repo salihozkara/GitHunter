@@ -6,5 +6,5 @@ public interface IMetricCalculatorManager
 {
     IMetricCalculator FindMetricCalculator(Language language);
 
-    Language[] GetSupportedLanguages();
+    IEnumerable<Language> GetSupportedLanguages();
 }

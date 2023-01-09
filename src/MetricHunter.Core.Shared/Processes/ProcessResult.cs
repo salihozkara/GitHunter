@@ -2,7 +2,7 @@
 
 public class ProcessResult
 {
-    public int ExitCode { get; set; }
-    public string? Output { get; set; }
-    public string? Error { get; set; }
+    public int ExitCode { get; init; }
+    public string? Output { get; init; }
+    public string? Error { get; init; }
 }

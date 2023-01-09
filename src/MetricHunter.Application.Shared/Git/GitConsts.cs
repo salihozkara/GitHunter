@@ -5,8 +5,8 @@ namespace MetricHunter.Application.Git;
 public static class GitConsts
 {
     public const string RepositoryInfoFileExtension = ".githunterinfo";
-    
-    public static Dictionary<string,Language> LanguagesMap = new()
+
+    public static readonly Dictionary<string, Language> LanguagesMap = new()
     {
         { "C#", Language.CSharp },
         { "C++", Language.CPlusPlus },
@@ -16,6 +16,6 @@ public static class GitConsts
         { "Python", Language.Python },
         { "Ruby", Language.Ruby },
         { "TypeScript", Language.TypeScript },
-        { "Shell", Language.Shell },
+        { "Shell", Language.Shell }
     };
 }

@@ -78,6 +78,12 @@ public class SourceMonitorResult : IResult
         return list;
     }
 
+    public bool IsEmpty()
+    {
+        return Metrics.All(
+            m => m.Value is "0" or "0.0" or "0,0" or "0.00" or "0,00" or "0.000" or "0,000" or "" or null);
+    }
+
     private string Normalize(string value)
     {
         var cultureInfo = new CultureInfo("en-US", false);

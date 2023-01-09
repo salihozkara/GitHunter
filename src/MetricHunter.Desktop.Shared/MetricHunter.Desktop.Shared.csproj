@@ -8,7 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\MetricHunter.Application.Shared\MetricHunter.Application.Shared.csproj" />
+        <ProjectReference Include="..\MetricHunter.Application.Shared\MetricHunter.Application.Shared.csproj"/>
     </ItemGroup>
 
 </Project>

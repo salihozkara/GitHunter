@@ -2,5 +2,4 @@
 
 public interface ISourceMonitorMetric : IMetric
 {
-    static IReadOnlyList<string> MatchedMetricNames { get; }
 }

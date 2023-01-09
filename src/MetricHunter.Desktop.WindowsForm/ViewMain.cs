@@ -1,7 +1,7 @@
-using System.ComponentModel;
 using System.Diagnostics;
 using MetricHunter.Desktop.Models;
 using MetricHunter.Desktop.Presenters;
+using MetricHunter.Desktop.Properties;
 using MetricHunter.Desktop.Views;
 using Octokit;
 using Volo.Abp.DependencyInjection;
@@ -19,36 +19,36 @@ public partial class ViewMain : Form, ISingletonDependency, IViewMain
 
     public void ShowMessage(string message)
     {
-        MessageBox.Show(message);   
+        MessageBox.Show(message);
     }
 
-    public string GithubToken => Properties.Settings.Default.GithubToken;
+    public string GithubToken => Settings.Default.GithubToken;
 
     public IEnumerable<long> SelectedRepositories
     {
         get
         {
             return _repositoryDataGridView.SelectedRows.Cast<DataGridViewRow>()
-              .Select(r => r.Cells[0].Value)
-              .Cast<long>()
-              .ToList();
+                .Select(r => r.Cells[0].Value)
+                .Cast<long>()
+                .ToList();
         }
     }
 
     public Language? SelectedLanguage => _languageComboBox.SelectedValue as Language?;
 
     public SortDirection SortDirection =>
-      _sortDirectionComboBox.SelectedValue as SortDirection? ?? SortDirection.Descending;
+        _sortDirectionComboBox.SelectedValue as SortDirection? ?? SortDirection.Descending;
 
     public int RepositoryCount =>
-      int.TryParse(_repositoryCountTextBox.Text, out var repositoryCount) ? repositoryCount : 10;
+        int.TryParse(_repositoryCountTextBox.Text, out var repositoryCount) ? repositoryCount : 10;
 
     public string Topics => _topicsTextBox.Text;
-    
+
     public string JsonLoadPath { get; set; }
-    
+
     public string JsonSavePath { get; set; }
-    
+
     public string DownloadRepositoryPath { get; set; }
 
     public IEnumerable<Language>? LanguageSelectList
@@ -60,33 +60,28 @@ public partial class ViewMain : Form, ISingletonDependency, IViewMain
     {
         set => _sortDirectionComboBox.DataSource = value;
     }
-    
+
     public void ShowRepositories(IEnumerable<RepositoryModel> repositories)
     {
         _repositoryDataGridView.DataSource = repositories.ToList();
 
-        if (_repositoryDataGridView.Columns["Id"] != null)
-        {
-            _repositoryDataGridView.Columns["Id"]!.Visible = false;
-        }
+        if (_repositoryDataGridView.Columns["Id"] != null) _repositoryDataGridView.Columns["Id"]!.Visible = false;
 
         SetHyperLink();
-    }
-
-    private void SetHyperLink()
-    {
-        if (_repositoryDataGridView.Columns.Contains("Url"))
-        {
-            _repositoryDataGridView.Columns["Url"]!.DefaultCellStyle = new DataGridViewCellStyle
-            {
-                ForeColor = Color.Blue,
-            };
-        }
     }
 
     public void Run()
     {
         System.Windows.Forms.Application.Run(this);
+    }
+
+    private void SetHyperLink()
+    {
+        if (_repositoryDataGridView.Columns.Contains("Url"))
+            _repositoryDataGridView.Columns["Url"]!.DefaultCellStyle = new DataGridViewCellStyle
+            {
+                ForeColor = Color.Blue
+            };
     }
 
     private void _viewMain_Load(object sender, EventArgs e)
@@ -112,10 +107,7 @@ public partial class ViewMain : Form, ISingletonDependency, IViewMain
             Filter = "Csv files | *.csv"
         };
 
-        if (fileDialog.ShowDialog() == DialogResult.OK)
-        {
-            await File.WriteAllTextAsync(fileDialog.FileName, result);
-        }
+        if (fileDialog.ShowDialog() == DialogResult.OK) await File.WriteAllTextAsync(fileDialog.FileName, result);
     }
 
     private void _downloadButton_Click(object sender, EventArgs e)
@@ -136,10 +128,7 @@ public partial class ViewMain : Form, ISingletonDependency, IViewMain
             Filter = "Json files | *.json"
         };
 
-        if (fileDialog.ShowDialog() == DialogResult.OK)
-        {
-            JsonLoadPath = fileDialog.FileName;
-        }
+        if (fileDialog.ShowDialog() == DialogResult.OK) JsonLoadPath = fileDialog.FileName;
 
         Presenter.ShowRepositories();
     }
@@ -153,18 +142,17 @@ public partial class ViewMain : Form, ISingletonDependency, IViewMain
         };
 
         if (saveFileDialog.ShowDialog() != DialogResult.OK) return;
-        
+
         JsonSavePath = saveFileDialog.FileName;
         Presenter.SaveRepositories();
-
     }
 
     private void _repositoryDataGridView_CellContentClick(object sender, DataGridViewCellEventArgs e)
     {
         if (!_repositoryDataGridView.Columns[_repositoryDataGridView.CurrentCell.ColumnIndex].HeaderText
-              .Contains("Url")) return;
+                .Contains("Url")) return;
 
-        if (!String.IsNullOrWhiteSpace(_repositoryDataGridView.CurrentCell.EditedFormattedValue.ToString()))
+        if (!string.IsNullOrWhiteSpace(_repositoryDataGridView.CurrentCell.EditedFormattedValue.ToString()))
         {
             var ps = new ProcessStartInfo(_repositoryDataGridView.CurrentCell.EditedFormattedValue.ToString()!)
             {
@@ -209,7 +197,6 @@ public partial class ViewMain : Form, ISingletonDependency, IViewMain
 
     private void helpToolStripMenuItem_Click(object sender, EventArgs e)
     {
-
     }
 
     private async void huntButton_Click(object sender, EventArgs e)

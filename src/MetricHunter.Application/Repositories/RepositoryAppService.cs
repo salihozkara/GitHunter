@@ -12,7 +12,7 @@ public class RepositoryAppService : IRepositoryAppService, ISingletonDependency
     public async Task<Repository[]> ReadRepositories(string path)
     {
         return JsonConvert.DeserializeObject<Repository[]>(await File.ReadAllTextAsync(path),
-                Resource.Jsons.JsonSerializerSettings) ?? Array.Empty<Repository>();
+            Resource.Jsons.JsonSerializerSettings) ?? Array.Empty<Repository>();
     }
 
     public async Task WriteRepositories(IEnumerable<Repository> repositories, string path)
@@ -25,7 +25,7 @@ public class RepositoryAppService : IRepositoryAppService, ISingletonDependency
 
             if (availableRepositories.Any()) addedRepositories.AddRange(availableRepositories);
         }
-        
+
         addedRepositories.AddRange(repositories);
 
         var json = JsonConvert.SerializeObject(addedRepositories, Resource.Jsons.JsonSerializerSettings);
@@ -34,6 +34,5 @@ public class RepositoryAppService : IRepositoryAppService, ISingletonDependency
         await using var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write,
             FileShare.None, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
         await fileStream.WriteAsync(Encoding.UTF8.GetBytes(json));
-        
     }
 }

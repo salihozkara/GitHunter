@@ -2,8 +2,8 @@
 using System.Dynamic;
 using System.Globalization;
 using System.Reflection;
-using MetricHunter.Core.Helpers;
 using JsonNet.ContractResolvers;
+using MetricHunter.Core.Helpers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Octokit;

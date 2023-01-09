@@ -10,9 +10,7 @@ public class MetricHunterModule : AbpModule
         var typeInfo = type.GetTypeInfo();
 
         return
-            typeInfo.IsClass &&
-            !typeInfo.IsAbstract &&
-            !typeInfo.IsGenericType &&
+            typeInfo is { IsClass: true, IsAbstract: false, IsGenericType: false } &&
             typeof(MetricHunterModule).GetTypeInfo().IsAssignableFrom(type);
     }
 }

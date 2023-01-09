@@ -32,7 +32,7 @@ public class MetricCalculatorManager : IMetricCalculatorManager, ISingletonDepen
         return languageStatistics;
     }
 
-    public Language[] GetSupportedLanguages()
+    public IEnumerable<Language> GetSupportedLanguages()
     {
         return _serviceProvider.GetRequiredService<IEnumerable<IMetricCalculator>>()
             .SelectMany(t => t.GetType().GetCustomAttribute<LanguageAttribute>()?.Languages ?? Array.Empty<Language>())

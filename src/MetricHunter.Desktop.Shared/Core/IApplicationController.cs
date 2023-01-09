@@ -6,13 +6,13 @@ public interface IApplicationController
 {
     IViewMain ViewMain { get; }
 
-    void ErrorMessage(string message);
-    
-    void SuccessMessage(string message);
-    
     public IServiceProvider ServiceProvider { get; }
 
+    void ErrorMessage(string message);
+
+    void SuccessMessage(string message);
+
     void ShowGithubLogin();
-    
+
     void StartApplication();
 }

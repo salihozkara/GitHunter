@@ -22,14 +22,21 @@ public interface IGitManager
     /// </summary>
     /// <param name="input"></param>
     /// <returns></returns>
-    Task<GitOutput> GetRepositories(GitInput input);
+    Task<GitOutput> GetRepositoriesAsync(GitInput input);
+
+    /// <summary>
+    ///     Returns the repository visibility
+    /// </summary>
+    /// <param name="repository"></param>
+    /// <returns></returns>
+    Task<bool> IsRepositoryPublicAsync(Repository repository);
 
     /// <summary>
     ///     Reruns failed requests
     /// </summary>
     /// <param name="failedRequests"></param>
     /// <returns></returns>
-    Task<GitOutput> RetryFailedRequest(List<SearchRepositoriesRequest> failedRequests);
+    Task<GitOutput> RetryFailedRequestAsync(List<SearchRepositoriesRequest> failedRequests);
 
     /// <summary>
     ///     This event is triggered when a request fails.
